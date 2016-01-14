@@ -194,3 +194,11 @@ FakesAssemblies/
 
 # Visual Studio 6 workspace options file
 *.opt
+
+# Tabs studio
+*.tss
+
+# Side-effects of the dodgey build process
+Generic.zip
+SDInstaller.exe*
+SDInstaller.dll*
