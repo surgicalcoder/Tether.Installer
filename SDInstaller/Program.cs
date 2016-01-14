@@ -183,7 +183,7 @@ namespace SDInstaller
 
             File.WriteAllText(Path.Combine(installLocation, "tether.exe.config"), File.ReadAllText(Path.Combine(installLocation, "tether.exe.config")).Replace("Trace", "Error"));
 
-            Process.Start( Path.Combine(installLocation, "Tether.exe"), "install");
+            Process.Start( Path.Combine(installLocation, "Tether.exe"), "install").WaitForExit();
 
             Process.Start("net", "start \"ThreeOneThree.Tether\"").WaitForExit();
 
