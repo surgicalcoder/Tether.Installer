@@ -33,7 +33,7 @@ namespace SDInstaller
             installLocation = args[2];            
             TempPath = Path.Combine(installLocation, "_temp");
 
-            if (args.Length==3)
+            if (args.Length==4)
             {
                 PluginManifestLocation = args[3];
             }
