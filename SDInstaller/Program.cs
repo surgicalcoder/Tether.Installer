@@ -97,6 +97,10 @@ namespace SDInstaller
 
             if (copySettingsBack)
             {
+                if (File.Exists(settingsFile))
+                {
+                    File.Delete(settingsFile);
+                }
                 File.Move(tempSettings, settingsFile);
             }
 
