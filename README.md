@@ -1,5 +1,5 @@
 # Tether Installer
-This is the Installation agent for the [Tether](github.com/surgicalcoder/tether) project. The agent will communicate with the SD API, and either A) provision a new machine or B) if a machine exists with the same name, grab that machine's key.
+This is the Installation agent for the [Tether](https://github.com/surgicalcoder/Tether) project. The agent will communicate with the SD API, and either A) provision a new machine or B) if a machine exists with the same name, grab that machine's key.
 
 If Tether already exists in the specified download location, it will preserve the existing configuration file, and perform an upgrade.
 
