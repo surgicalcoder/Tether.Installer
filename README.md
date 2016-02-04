@@ -5,7 +5,7 @@ If Tether already exists in the specified download location, it will preserve th
 
 ## Requirements
 
-You need to be running the .NET 4 framework (minimum), have an Server Density account, and an SD API Key. If you don't have an API key, you can obtain one by following [instructions on the SD API page](https://apidocs.serverdensity.com/#authentication). 
+You need to be running the .NET 4 framework (minimum), have a Server Density account, and an SD API Key. If you don't have an API key, you can obtain one by following [instructions on the SD API page](https://apidocs.serverdensity.com/#authentication). 
 
 ## Usage - Self Build
 
