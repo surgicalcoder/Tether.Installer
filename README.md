@@ -1,11 +1,11 @@
 # Tether Installer
-This is the Installation agent for the [Tether](github.com/surgicalcoder/tether) project. The agent will communicate with the SD API, and either A) provision a new machine or B) if a machine exists with the same name, grab that machine's key.
+This is the Installation agent for the [Tether](https://github.com/surgicalcoder/Tether) project. The agent will communicate with the SD API, and either A) provision a new machine or B) if a machine exists with the same name, grab that machine's key.
 
 If Tether already exists in the specified download location, it will preserve the existing configuration file, and perform an upgrade.
 
 ## Requirements
 
-You need to be running the .NET 4 framework (minimum), have an Server Density account, and an SD API Key. If you don't have an API key, you can obtain one by following [instructions on the SD API page](https://apidocs.serverdensity.com/#authentication). 
+You need to be running the .NET 4 framework (minimum), have a Server Density account, and an SD API Key. If you don't have an API key, you can obtain one by following [instructions on the SD API page](https://apidocs.serverdensity.com/#authentication). 
 
 ## Usage - Self Build
 
