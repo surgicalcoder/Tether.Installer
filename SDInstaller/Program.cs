@@ -69,7 +69,6 @@ namespace SDInstaller
                 PerformUpgradeInstall(args, localZip, client, ctl);
             }
 
-            
             Console.WriteLine("Finished");
         }
 
@@ -103,6 +102,17 @@ namespace SDInstaller
                 }
                 File.Move(tempSettings, settingsFile);
             }
+
+            var pluginLocation = Path.Combine(installLocation, "plugins");
+
+            if (Directory.Exists(pluginLocation) && Directory.GetFiles(pluginLocation, "Tether.CoreChecks.*").Any())
+            {
+                foreach (var file in Directory.GetFiles(pluginLocation, "Tether.CoreChecks.*"))
+                {
+                    File.Delete(file);
+                }
+            }
+
 
             Thread.Sleep(TimeSpan.FromSeconds(15));
 
