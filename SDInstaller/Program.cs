@@ -259,7 +259,7 @@ namespace SDInstaller
             TetherAgentConfig agentConfig = new TetherAgentConfig
             {
                 CheckInterval = 60,
-                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{account}", AccountName),
+                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{account}", AccountName).Trim(),
                 ServerDensityKey = AgentKey,
                 PluginManifestLocation = options.ManifestLocation
             };
