@@ -30,46 +30,53 @@ namespace SDInstaller
                 return;
             }
 
-            installLocation = args[2];            
-            TempPath = Path.Combine(installLocation, "_temp");
-
-            if (args.Length==4)
+            try
             {
-                PluginManifestLocation = args[3];
-            }
+                installLocation = args[2];            
+                TempPath = Path.Combine(installLocation, "_temp");
 
-            if (!Directory.Exists(installLocation))
+                if (args.Length==4)
+                {
+                    PluginManifestLocation = args[3];
+                }
+
+                if (!Directory.Exists(installLocation))
+                {
+                    Directory.CreateDirectory(installLocation);
+                }
+
+                if (!Directory.Exists(TempPath))
+                {
+                    Directory.CreateDirectory(TempPath);
+                }
+
+                WebClient client = new WebClient();
+                Console.WriteLine("Downloading file");
+                var localZip = Path.Combine(TempPath,  "Tether.zip");
+                client.DownloadFile(args[1], localZip);
+                Console.WriteLine("File Downloaded, executing");
+
+
+
+                ServiceController ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "ThreeOneThree.Tether");
+
+                if (ctl == null)
+                {
+                    Console.WriteLine("Performing Fresh install");
+                    PerformFreshInstall(args, localZip, client);
+                }
+                else
+                {
+                    Console.WriteLine("Performing Upgrade");
+                    PerformUpgradeInstall(args, localZip, client, ctl);
+                }
+
+                Console.WriteLine("Finished");
+            }
+            catch (Exception e)
             {
-                Directory.CreateDirectory(installLocation);
+                Console.WriteLine(e);
             }
-
-            if (!Directory.Exists(TempPath))
-            {
-                Directory.CreateDirectory(TempPath);
-            }
-
-            WebClient client = new WebClient();
-            Console.WriteLine("Downloading file");
-            var localZip = Path.Combine(TempPath,  "Tether.zip");
-            client.DownloadFile(args[1], localZip);
-            Console.WriteLine("File Downloaded, executing");
-
-
-
-            ServiceController ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "ThreeOneThree.Tether");
-
-            if (ctl == null)
-            {
-                Console.WriteLine("Performing Fresh install");
-                PerformFreshInstall(args, localZip, client);
-            }
-            else
-            {
-                Console.WriteLine("Performing Upgrade");
-                PerformUpgradeInstall(args, localZip, client, ctl);
-            }
-
-            Console.WriteLine("Finished");
         }
 
         private static void PerformUpgradeInstall(string[] args, string localZip, WebClient client, ServiceController ctl)
