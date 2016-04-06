@@ -62,8 +62,6 @@ namespace SDInstaller
 
     class Program
     {
-        private static string TempPath;
-
         private static InstallArgs options;
 
         static void Main(string[] args)
@@ -91,14 +89,14 @@ namespace SDInstaller
                     Directory.CreateDirectory(options.InstallLocation);
                 }
 
-                if (!Directory.Exists(TempPath))
+                if (!Directory.Exists(options.TempPath))
                 {
-                    Directory.CreateDirectory(TempPath);
+                    Directory.CreateDirectory(options.TempPath);
                 }
 
                 WebClient client = new WebClient();
                 Console.WriteLine("Downloading file");
-                var localZip = Path.Combine(TempPath,  "Tether.zip");
+                var localZip = Path.Combine(options.TempPath,  "Tether.zip");
                 client.DownloadFile(options.TetherLocation, localZip);
                 Console.WriteLine("File Downloaded, executing");
                 
@@ -130,7 +128,7 @@ namespace SDInstaller
             StopService(ctl); // Just to be sure it's not running!
 
             var settingsFile = Path.Combine(options.InstallLocation, "settings.json");
-            var tempSettings = Path.Combine(TempPath, "settings.json");
+            var tempSettings = Path.Combine(options.TempPath, "settings.json");
 
             var copySettingsBack = false;
 
@@ -142,7 +140,7 @@ namespace SDInstaller
 
             ExtractFilesToLocation(localZip, options.InstallLocation);
 
-            File.Delete(Path.Combine(TempPath, "Tether.zip"));
+            File.Delete(Path.Combine(options.TempPath, "Tether.zip"));
 
             File.WriteAllText( Path.Combine(options.InstallLocation, "tether.exe.config")  ,File.ReadAllText(Path.Combine(options.InstallLocation, "tether.exe.config")).Replace("Trace", "Error"));
 
@@ -193,7 +191,7 @@ namespace SDInstaller
         {
             ExtractFilesToLocation(localZip, options.InstallLocation);
 
-            File.Delete(Path.Combine(TempPath, "Tether.zip"));
+            File.Delete(Path.Combine(options.TempPath, "Tether.zip"));
 
             string AccountName = options.SDAccountName ?? GetAccountName(client, options.SDAPIKey);
 
@@ -261,7 +259,7 @@ namespace SDInstaller
             TetherAgentConfig agentConfig = new TetherAgentConfig
             {
                 CheckInterval = 60,
-                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{accountname}", AccountName),
+                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{account}", AccountName),
                 ServerDensityKey = AgentKey,
                 PluginManifestLocation = options.ManifestLocation
             };
