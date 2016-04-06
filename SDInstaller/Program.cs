@@ -9,7 +9,9 @@ using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using PowerArgs;
 using SharpCompress.Archive.SevenZip;
 using SharpCompress.Archive.Zip;
 using SharpCompress.Common;
@@ -17,32 +19,76 @@ using SharpCompress.Reader;
 
 namespace SDInstaller
 {
+
+    public class InstallArgs
+    {
+        [ArgPosition(0)]
+        [ArgRequired()]
+        [ArgShortcut("API")]
+        public string SDAPIKey { get; set; }
+
+        [ArgPosition(1)]
+        [ArgRequired()]
+        [ArgShortcut(ArgShortcutPolicy.NoShortcut)]
+        public string TetherLocation { get; set; }
+
+        [ArgPosition(2)]
+        [ArgRequired()]
+        [ArgShortcut("InstallTo")]
+        public string InstallLocation { get; set; }
+
+        [ArgShortcut("Manifest")]
+        public string ManifestLocation { get; set; }
+
+        [ArgDefaultValue("https://{account}.agent.serverdensity.io ")]
+        [ArgShortcut("PostLocation")]
+        public string ServerDensityPostLocation { get; set; }
+
+        public string TempPath { get; set; }
+
+        [ArgDefaultValue(true)]
+        [ArgShortcut(ArgShortcutPolicy.NoShortcut)]
+        public bool PreserveConfigFile { get; set; }
+
+
+        [ArgShortcut(ArgShortcutPolicy.NoShortcut)]
+        public string SDAccountName { get; set; }
+
+        [ArgShortcut(ArgShortcutPolicy.NoShortcut)]
+        public string SDAgentKey { get; set; }
+
+    }
+
+
     class Program
     {
         private static string TempPath;
-        private static string installLocation;
-        private static string PluginManifestLocation;
+
+        private static InstallArgs options;
+
         static void Main(string[] args)
         {
-            if (args.Length < 3 || string.IsNullOrWhiteSpace(args[0]))
+            try
             {
-                Console.WriteLine("Usage: SDInstaller (SD API Key) (Tether web Location) (Tether install location) (OPTIONAL: Plugin Manifest Location)");
+                options = Args.Parse<InstallArgs>(args);
+            }
+            catch (ArgException ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine(ArgUsage.GenerateUsageFromTemplate<InstallArgs>());
                 return;
             }
 
             try
             {
-                installLocation = args[2];            
-                TempPath = Path.Combine(installLocation, "_temp");
-
-                if (args.Length==4)
+                if (String.IsNullOrWhiteSpace(options.TempPath))
                 {
-                    PluginManifestLocation = args[3];
+                    options.TempPath = Path.Combine(options.InstallLocation, "_temp");
                 }
 
-                if (!Directory.Exists(installLocation))
+                if (!Directory.Exists(options.InstallLocation))
                 {
-                    Directory.CreateDirectory(installLocation);
+                    Directory.CreateDirectory(options.InstallLocation);
                 }
 
                 if (!Directory.Exists(TempPath))
@@ -53,22 +99,20 @@ namespace SDInstaller
                 WebClient client = new WebClient();
                 Console.WriteLine("Downloading file");
                 var localZip = Path.Combine(TempPath,  "Tether.zip");
-                client.DownloadFile(args[1], localZip);
+                client.DownloadFile(options.TetherLocation, localZip);
                 Console.WriteLine("File Downloaded, executing");
-
-
-
+                
                 ServiceController ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "ThreeOneThree.Tether");
 
                 if (ctl == null)
                 {
                     Console.WriteLine("Performing Fresh install");
-                    PerformFreshInstall(args, localZip, client);
+                    PerformFreshInstall(localZip, client);
                 }
                 else
                 {
                     Console.WriteLine("Performing Upgrade");
-                    PerformUpgradeInstall(args, localZip, client, ctl);
+                    PerformUpgradeInstall(localZip, client, ctl);
                 }
 
                 Console.WriteLine("Finished");
@@ -79,27 +123,28 @@ namespace SDInstaller
             }
         }
 
-        private static void PerformUpgradeInstall(string[] args, string localZip, WebClient client, ServiceController ctl)
+        private static void PerformUpgradeInstall(string localZip, WebClient client, ServiceController ctl)
         {
             StopService(ctl);
             StopService(ctl);
             StopService(ctl); // Just to be sure it's not running!
 
-            var settingsFile = Path.Combine(installLocation, "settings.json");
+            var settingsFile = Path.Combine(options.InstallLocation, "settings.json");
             var tempSettings = Path.Combine(TempPath, "settings.json");
+
             var copySettingsBack = false;
 
-            if (File.Exists(settingsFile))
+            if (File.Exists(settingsFile) && options.PreserveConfigFile)
             {
                 File.Copy(settingsFile, tempSettings, true);
                 copySettingsBack = true;
             }
 
-            ExtractFilesToLocation(localZip, installLocation);
+            ExtractFilesToLocation(localZip, options.InstallLocation);
 
             File.Delete(Path.Combine(TempPath, "Tether.zip"));
 
-            File.WriteAllText( Path.Combine(installLocation, "tether.exe.config")  ,File.ReadAllText(Path.Combine(installLocation, "tether.exe.config")).Replace("Trace", "Error"));
+            File.WriteAllText( Path.Combine(options.InstallLocation, "tether.exe.config")  ,File.ReadAllText(Path.Combine(options.InstallLocation, "tether.exe.config")).Replace("Trace", "Error"));
 
             if (copySettingsBack)
             {
@@ -109,17 +154,20 @@ namespace SDInstaller
                 }
                 File.Move(tempSettings, settingsFile);
             }
+            else
+            {
+                GenerateConfiguration(options.SDAccountName ?? GetAccountName(client, options.SDAPIKey), GetAgentKey());
+            }
 
-            var pluginLocation = Path.Combine(installLocation, "plugins");
+            var pluginLocation = Path.Combine(options.InstallLocation, "plugins");
 
             if (Directory.Exists(pluginLocation) && Directory.GetFiles(pluginLocation, "Tether.CoreChecks.*").Any())
             {
-                foreach (var file in Directory.GetFiles(pluginLocation, "Tether.CoreChecks.*"))
+                foreach (var file in Directory.GetFiles(pluginLocation, "Tether.CoreChecks.*")) // This file was accidentally copied from a few builds, so lets make sure they don't exist!
                 {
                     File.Delete(file);
                 }
             }
-
 
             Thread.Sleep(TimeSpan.FromSeconds(15));
 
@@ -141,74 +189,85 @@ namespace SDInstaller
             }
         }
 
-        private static void PerformFreshInstall(string[] args, string localZip, WebClient client)
+        private static void PerformFreshInstall(string localZip, WebClient client)
         {
-            ExtractFilesToLocation(localZip, installLocation);
+            ExtractFilesToLocation(localZip, options.InstallLocation);
 
             File.Delete(Path.Combine(TempPath, "Tether.zip"));
 
-            string SDKey = args[0];
-
-            var downloadString = client.DownloadString(@"https://api.serverdensity.io/inventory/resources?token=" + SDKey + @"&filter={""name"":""" + Environment.MachineName.ToLower() + @""",""type"":""device""}&fields=[""agentKey""]");
-
-            var jObject = JArray.Parse(downloadString);
-
-            string AccountName = GetAccountName(client, SDKey);
+            string AccountName = options.SDAccountName ?? GetAccountName(client, options.SDAPIKey);
 
             if (String.IsNullOrWhiteSpace(AccountName))
             {
                 Console.WriteLine("! Unable to get account name !");
             }
 
-            string AgentKey;
+            var AgentKey = GetAgentKey();
 
-            if (jObject.Any())
-            {
-                Console.WriteLine("Agent Key Found!");
+            GenerateConfiguration(AccountName, AgentKey);
 
-                AgentKey = jObject.FirstOrDefault<dynamic>().agentKey;
+            File.WriteAllText(Path.Combine(options.InstallLocation, "tether.exe.config"), File.ReadAllText(Path.Combine(options.InstallLocation, "tether.exe.config")).Replace("Trace", "Error"));
 
-                Console.WriteLine("Agent key is " + AgentKey);
-            }
-            else
-            {
-                Console.WriteLine("Creating Agent Key");
-
-                string createMachineRequest = JObject.FromObject(new {name = Environment.MachineName.ToLower()}).ToString();
-
-                client.Headers.Set(HttpRequestHeader.ContentType, "application/json");
-
-                string response = client.UploadString("https://api.serverdensity.io/inventory/devices?token=" + SDKey, createMachineRequest);
-
-                AgentKey = JObject.Parse(response)["agentKey"].ToString();
-
-                Console.WriteLine("Agent key is " + AgentKey);
-            }
-
-            var configLocation = Path.Combine(installLocation, "settings.json");
-
-            if (!File.Exists(configLocation))
-            {
-                throw new Exception("Config file does not exist!");
-            }
-
-            string config =
-                @"{
-    ""ServerDensityUrl"": ""https://" + AccountName + @".serverdensity.io"",
-    ""ServerDensityKey"": """ + AgentKey + @""",
-    ""CheckInterval"": 60,
-    ""PluginManifestLocation"": """ + PluginManifestLocation + @"""
-}";
-
-            File.WriteAllText(configLocation, config);
-
-            File.WriteAllText(Path.Combine(installLocation, "tether.exe.config"), File.ReadAllText(Path.Combine(installLocation, "tether.exe.config")).Replace("Trace", "Error"));
-
-            Process.Start( Path.Combine(installLocation, "Tether.exe"), "install").WaitForExit();
+            Process.Start( Path.Combine(options.InstallLocation, "Tether.exe"), "install").WaitForExit();
 
             Process.Start("net", "start \"ThreeOneThree.Tether\"").WaitForExit();
 
             Console.WriteLine("Service Started");
+        }
+
+        private static string GetAgentKey()
+        {
+            if (!String.IsNullOrWhiteSpace(options.SDAgentKey))
+            {
+                return options.SDAgentKey;
+            }
+
+            string AgentKey;
+            using (WebClient client = new WebClient()) {
+                var downloadString = client.DownloadString(@"https://api.serverdensity.io/inventory/resources?token=" + options.SDAPIKey + @"&filter={""name"":""" + Environment.MachineName.ToLower() + @""",""type"":""device""}&fields=[""agentKey""]");
+
+                var jObject = JArray.Parse(downloadString);
+
+                if (jObject.Any())
+                {
+                    Console.WriteLine("Agent Key Found!");
+
+                    AgentKey = jObject.FirstOrDefault<dynamic>().agentKey;
+
+                    Console.WriteLine("Agent key is " + AgentKey);
+                }
+                else
+                {
+                    Console.WriteLine("Creating Agent Key");
+
+                    string createMachineRequest = JObject.FromObject(new {name = Environment.MachineName.ToLower()}).ToString();
+
+                    client.Headers.Set(HttpRequestHeader.ContentType, "application/json");
+
+                    string response = client.UploadString("https://api.serverdensity.io/inventory/devices?token=" + options.SDAPIKey, createMachineRequest);
+
+                    AgentKey = JObject.Parse(response)["agentKey"].ToString();
+
+                    Console.WriteLine("Agent key is " + AgentKey);
+                }
+            }
+            return AgentKey;
+        }
+
+        private static void GenerateConfiguration(string AccountName, string AgentKey)
+        {
+            var configLocation = Path.Combine(options.InstallLocation, "settings.json");
+
+            TetherAgentConfig agentConfig = new TetherAgentConfig
+            {
+                CheckInterval = 60,
+                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{accountname}", AccountName),
+                ServerDensityKey = AgentKey,
+                PluginManifestLocation = options.ManifestLocation
+            };
+
+
+            File.WriteAllText(configLocation, JsonConvert.SerializeObject(agentConfig));
         }
 
         private static void ExtractFilesToLocation(string fileName, string Path)
@@ -226,8 +285,13 @@ namespace SDInstaller
                 }
             }
         }
-        public static string GetAccountName(WebClient client, string SDKey)
+        private static string GetAccountName(WebClient client, string SDKey)
         {
+            if (!String.IsNullOrWhiteSpace(options.SDAccountName))
+            {
+                return options.SDAccountName;
+            }
+
             var downloadString = client.DownloadString("https://api.serverdensity.io/users/users?token=" + SDKey);
 
             var jObject = JArray.Parse(downloadString);
@@ -238,5 +302,13 @@ namespace SDInstaller
 
             return "";
         }
+    }
+
+    public class TetherAgentConfig
+    {
+        public string ServerDensityUrl { get; set; }
+        public string ServerDensityKey { get; set; }
+        public int CheckInterval { get; set; }
+        public string PluginManifestLocation { get; set; }
     }
 }
