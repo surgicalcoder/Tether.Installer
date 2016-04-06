@@ -29,7 +29,7 @@ Download code, build, distribute EXE as required, then use the following paramet
     SDAccountName
     SDAgentKey
     
-ServerDensityPostLocation can either be provided as a proper url, or have the placeholder of {account}, which will be automatically replaced.
+ServerDensityPostLocation can either be provided as a proper url, or have the placeholder of {account}, which will be automatically replaced. You can also provide overrides for AccountName, and/or AgentKeys, so if these are provided, the installation process will not contact SD's API to obtain these.
 
 Example usage:
 
