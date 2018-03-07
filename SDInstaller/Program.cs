@@ -40,7 +40,7 @@ namespace SDInstaller
         [ArgShortcut("Manifest")]
         public string ManifestLocation { get; set; }
 
-        [ArgDefaultValue("https://{account}.agent.serverdensity.io ")]
+        [ArgDefaultValue("https://{account}.agent.serverdensity.io/intake/?agent_key={agentkey}")]
         [ArgShortcut("PostLocation")]
         public string ServerDensityPostLocation { get; set; }
 
@@ -99,8 +99,24 @@ namespace SDInstaller
                 var localZip = Path.Combine(options.TempPath,  "Tether.zip");
                 client.DownloadFile(options.TetherLocation, localZip);
                 Console.WriteLine("File Downloaded, executing");
-                
-                ServiceController ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "ThreeOneThree.Tether");
+
+
+                var serviceControllers = ServiceController.GetServices();
+
+                var firstOrDefault = serviceControllers.FirstOrDefault(f=>f.ServiceName == "ThreeOneThree.Tether");
+
+                if (firstOrDefault != null)
+                {
+                    Console.WriteLine("V1 agent found, removing");
+                    var info =
+                        new ProcessStartInfo(@"c:\windows\system32\sc.exe", "delete \"ThreeOneThree.Tether\"")
+                        {
+                            CreateNoWindow = true
+                        };
+                    Process.Start(info).WaitForExit();
+                }
+
+                ServiceController ctl = serviceControllers.FirstOrDefault(s => s.ServiceName == "Tether");
 
                 if (ctl == null)
                 {
@@ -169,7 +185,7 @@ namespace SDInstaller
 
             Thread.Sleep(TimeSpan.FromSeconds(15));
 
-            ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "ThreeOneThree.Tether");
+            ctl = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == "Tether");
             ctl.Start();
             ctl.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
             if (ctl.Status != ServiceControllerStatus.Running)
@@ -208,7 +224,7 @@ namespace SDInstaller
 
             Process.Start( Path.Combine(options.InstallLocation, "Tether.exe"), "install").WaitForExit();
 
-            Process.Start("net", "start \"ThreeOneThree.Tether\"").WaitForExit();
+            Process.Start("net", "start \"Tether\"").WaitForExit();
 
             Console.WriteLine("Service Started");
         }
@@ -259,7 +275,7 @@ namespace SDInstaller
             TetherAgentConfig agentConfig = new TetherAgentConfig
             {
                 CheckInterval = 60,
-                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{account}", AccountName).Trim(),
+                ServerDensityUrl = options.ServerDensityPostLocation.Replace("{account}", AccountName).Replace("{agentkey}",AgentKey).Trim(),
                 ServerDensityKey = AgentKey,
                 PluginManifestLocation = options.ManifestLocation
             };
@@ -270,10 +286,14 @@ namespace SDInstaller
 
         private static void ExtractFilesToLocation(string fileName, string Path)
         {
-            if (!Directory.Exists(Path))
+            if (Directory.Exists(Path))
             {
-                Directory.CreateDirectory(Path);
+                Directory.Delete(Path, true);
             }
+
+            
+            Directory.CreateDirectory(Path);
+            
 
             using (var sevenZipArchive = ZipArchive.Open(fileName))
             {
