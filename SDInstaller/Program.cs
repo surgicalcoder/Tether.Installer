@@ -84,42 +84,17 @@ namespace SDInstaller
                     options.TempPath = Path.Combine(options.InstallLocation, "_temp");
                 }
 
-                WebClient client = new WebClient();
+                var serviceControllers = ServiceController.GetServices();
+                CheckAndRemoveV1(serviceControllers);
+
+                var client = new WebClient();
+
                 Console.WriteLine("Downloading file");
+                
                 var localZip = Path.Combine(options.TempPath,  "Tether.zip");
                 client.DownloadFile(options.TetherLocation, localZip);
+                
                 Console.WriteLine("File Downloaded, executing");
-
-
-                var serviceControllers = ServiceController.GetServices();
-
-                var firstOrDefault = serviceControllers.FirstOrDefault(f=>f.ServiceName == "ThreeOneThree.Tether");
-
-                if (firstOrDefault != null)
-                {
-                    Console.WriteLine("V1 agent found, removing");
-                    var info = new ProcessStartInfo(@"c:\windows\system32\sc.exe", "delete \"ThreeOneThree.Tether\"")
-                        {
-                            CreateNoWindow = true
-                        };
-                    Process.Start(info).WaitForExit();
-
-                    var proc = Process.GetProcessesByName("Tether");
-
-                    if (proc.Any())
-                    {
-                        foreach (var process in proc)
-                        {
-                            process.Kill();
-                        }
-                    }
-
-                    if (Directory.Exists(options.InstallLocation))
-                    {
-                        Directory.Delete(options.InstallLocation, true);
-                    }
-
-                }
 
                 if (!Directory.Exists(options.InstallLocation))
                 {
@@ -149,6 +124,37 @@ namespace SDInstaller
             catch (Exception e)
             {
                 Console.WriteLine(e);
+            }
+        }
+
+        private static void CheckAndRemoveV1(ServiceController[] serviceControllers)
+        {
+            var firstOrDefault = serviceControllers.FirstOrDefault(f => f.ServiceName == "ThreeOneThree.Tether");
+
+            if (firstOrDefault != null)
+            {
+                Console.WriteLine("V1 agent found, removing");
+                var info = new ProcessStartInfo(@"c:\windows\system32\sc.exe", "delete \"ThreeOneThree.Tether\"")
+                {
+                    CreateNoWindow = true
+                };
+                Process.Start(info).WaitForExit();
+
+                var proc = Process.GetProcessesByName("Tether");
+
+                if (proc.Any())
+                {
+                    foreach (var process in proc)
+                    {
+                        process.Kill();
+                    }
+                }
+
+                if (Directory.Exists(options.InstallLocation))
+                {
+                    Console.WriteLine("Deleting v1");
+                    Directory.Delete(options.InstallLocation, true);
+                }
             }
         }
 
