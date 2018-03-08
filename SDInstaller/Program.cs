@@ -89,11 +89,13 @@ namespace SDInstaller
 
                 if (!Directory.Exists(options.InstallLocation))
                 {
+                    Console.WriteLine($"Creating installation directory {options.InstallLocation}");
                     Directory.CreateDirectory(options.InstallLocation);
                 }
 
                 if (!Directory.Exists(options.TempPath))
                 {
+                    Console.WriteLine($"Creating installation directory {options.TempPath}");
                     Directory.CreateDirectory(options.TempPath);
                 }
 
