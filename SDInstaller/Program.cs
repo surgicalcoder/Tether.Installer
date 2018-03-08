@@ -84,16 +84,6 @@ namespace SDInstaller
                     options.TempPath = Path.Combine(options.InstallLocation, "_temp");
                 }
 
-                if (!Directory.Exists(options.InstallLocation))
-                {
-                    Directory.CreateDirectory(options.InstallLocation);
-                }
-
-                if (!Directory.Exists(options.TempPath))
-                {
-                    Directory.CreateDirectory(options.TempPath);
-                }
-
                 WebClient client = new WebClient();
                 Console.WriteLine("Downloading file");
                 var localZip = Path.Combine(options.TempPath,  "Tether.zip");
@@ -108,15 +98,40 @@ namespace SDInstaller
                 if (firstOrDefault != null)
                 {
                     Console.WriteLine("V1 agent found, removing");
-                    var info =
-                        new ProcessStartInfo(@"c:\windows\system32\sc.exe", "delete \"ThreeOneThree.Tether\"")
+                    var info = new ProcessStartInfo(@"c:\windows\system32\sc.exe", "delete \"ThreeOneThree.Tether\"")
                         {
                             CreateNoWindow = true
                         };
                     Process.Start(info).WaitForExit();
+
+                    var proc = Process.GetProcessesByName("Tether");
+
+                    if (proc.Any())
+                    {
+                        foreach (var process in proc)
+                        {
+                            process.Kill();
+                        }
+                    }
+
+                    if (Directory.Exists(options.InstallLocation))
+                    {
+                        Directory.Delete(options.InstallLocation, true);
+                    }
+
                 }
 
-                ServiceController ctl = serviceControllers.FirstOrDefault(s => s.ServiceName == "Tether");
+                if (!Directory.Exists(options.InstallLocation))
+                {
+                    Directory.CreateDirectory(options.InstallLocation);
+                }
+
+                if (!Directory.Exists(options.TempPath))
+                {
+                    Directory.CreateDirectory(options.TempPath);
+                }
+
+                var ctl = serviceControllers.FirstOrDefault(s => s.ServiceName == "Tether");
 
                 if (ctl == null)
                 {
@@ -286,12 +301,6 @@ namespace SDInstaller
 
         private static void ExtractFilesToLocation(string fileName, string Path)
         {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
-
-            
             Directory.CreateDirectory(Path);
             
 
