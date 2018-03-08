@@ -87,15 +87,6 @@ namespace SDInstaller
                 var serviceControllers = ServiceController.GetServices();
                 CheckAndRemoveV1(serviceControllers);
 
-                var client = new WebClient();
-
-                Console.WriteLine("Downloading file");
-                
-                var localZip = Path.Combine(options.TempPath,  "Tether.zip");
-                client.DownloadFile(options.TetherLocation, localZip);
-                
-                Console.WriteLine("File Downloaded, executing");
-
                 if (!Directory.Exists(options.InstallLocation))
                 {
                     Directory.CreateDirectory(options.InstallLocation);
@@ -106,6 +97,15 @@ namespace SDInstaller
                     Directory.CreateDirectory(options.TempPath);
                 }
 
+                var client = new WebClient();
+
+                Console.WriteLine("Downloading file");
+                
+                var localZip = Path.Combine(options.TempPath,  "Tether.zip");
+                client.DownloadFile(options.TetherLocation, localZip);
+                
+                Console.WriteLine("File Downloaded, executing");
+                
                 var ctl = serviceControllers.FirstOrDefault(s => s.ServiceName == "Tether");
 
                 if (ctl == null)
